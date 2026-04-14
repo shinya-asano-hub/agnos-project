@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agnos | ローンシミュレーター</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Helvetica Neue', -apple-system, sans-serif;
+  background: #f9f9f7;
+  color: #1a1a1a;
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  background: #fff;
+  min-height: 100vh;
+}
+
+/* ヘッダー */
+.header {
+  padding: 24px 28px 0;
+  border-bottom: 1px solid #efefed;
+}
+.logo {
+  margin-bottom: 20px;
+  line-height: 0;
+}
+.logo svg {
+  height: 20px;
+  width: auto;
+}
+
+.tabs {
+  display: flex;
+  gap: 0;
+}
+.tab {
+  padding: 10px 24px;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: #aaa;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.tab.active {
+  color: #1a1a1a;
+  border-bottom-color: #8DCFCF;
+  font-weight: 500;
+}
+
+/* 画面 */
+.screen { display: none; padding: 28px; }
+.screen.active { display: block; }
+
+/* 物件情報 */
+.prop-header {
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #efefed;
+}
+.prop-label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: #aaa;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.prop-name {
+  font-size: 20px;
+  font-weight: 500;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+}
+.prop-price {
+  font-size: 14px;
+  color: #888;
+}
+
+/* メイン金額 */
+.main-block {
+  text-align: center;
+  padding: 32px 0 24px;
+  margin-bottom: 24px;
+  background: #f9f9f7;
+  border-radius: 16px;
+}
+.main-label {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: #aaa;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.main-amount {
+  font-size: 56px;
+  font-weight: 300;
+  color: #1a1a1a;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.main-unit {
+  font-size: 20px;
+  color: #888;
+  margin-left: 4px;
+  font-weight: 300;
+}
+.main-sub {
+  font-size: 12px;
+  color: #aaa;
+  margin-top: 8px;
+}
+
+/* 内訳 */
+.breakdown {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.bk {
+  padding: 14px 16px;
+  border: 1px solid #efefed;
+  border-radius: 12px;
+}
+.bk-label {
+  font-size: 11px;
+  color: #aaa;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+.bk-val {
+  font-size: 17px;
+  font-weight: 400;
+  color: #1a1a1a;
+}
+
+/* 差額 */
+.diff-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border: 1px solid #efefed;
+  border-radius: 12px;
+  margin-bottom: 28px;
+}
+.diff-label { font-size: 13px; color: #888; }
+.diff-val { font-size: 15px; font-weight: 500; }
+.diff-val.plus { color: #e05a5a; }
+.diff-val.minus { color: #4caf85; }
+.diff-val.zero { color: #ccc; }
+
+/* スライダー */
+.sliders { display: flex; flex-direction: column; gap: 22px; margin-bottom: 28px; }
+.sl-row {}
+.sl-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+.sl-name { font-size: 13px; color: #888; letter-spacing: 0.03em; }
+.sl-val { font-size: 16px; font-weight: 500; color: #1a1a1a; }
+
+input[type=range] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  background: #e8e8e4;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #63E1E5;
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #63E1E5;
+}
+input[type=range]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 4px;
+}
+
+/* 注釈 */
+.note {
+  font-size: 11px;
+  color: #ccc;
+  line-height: 1.8;
+  padding-top: 20px;
+  border-top: 1px solid #efefed;
+}
+
+/* アンケート */
+.q-progress {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 28px;
+}
+.q-dot {
+  height: 2px;
+  flex: 1;
+  background: #efefed;
+  border-radius: 2px;
+  transition: background 0.2s;
+}
+.q-dot.done { background: #8DCFCF; }
+.q-dot.active { background: #1a1a1a; }
+
+.q-num {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: #aaa;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.q-text {
+  font-size: 20px;
+  font-weight: 400;
+  color: #1a1a1a;
+  line-height: 1.5;
+  margin-bottom: 28px;
+}
+.q-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+.q-opt {
+  padding: 16px 20px;
+  border: 1px solid #efefed;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 15px;
+  color: #1a1a1a;
+  background: #fff;
+  text-align: left;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.q-opt:hover { border-color: #ccc; }
+.q-opt.selected {
+  border-color: #8DCFCF;
+  background: #f0fafa;
+  color: #1a1a1a;
+}
+
+.q-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.btn-back {
+  padding: 12px 20px;
+  font-size: 14px;
+  border: 1px solid #efefed;
+  border-radius: 10px;
+  background: #fff;
+  color: #888;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-next {
+  flex: 1;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 500;
+  border: none;
+  border-radius: 10px;
+  background: #1a1a1a;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.04em;
+}
+.btn-next:disabled {
+  background: #e8e8e4;
+  color: #bbb;
+  cursor: default;
+}
+
+/* 自由記述 */
+.q-textarea {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 15px;
+  border: 1px solid #efefed;
+  border-radius: 12px;
+  resize: none;
+  height: 120px;
+  font-family: inherit;
+  color: #1a1a1a;
+  outline: none;
+  margin-bottom: 28px;
+}
+.q-textarea:focus { border-color: #8DCFCF; }
+
+/* 完了画面 */
+.thanks {
+  text-align: center;
+  padding: 48px 0;
+}
+.thanks-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #f0fafa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  font-size: 24px;
+}
+.thanks-title {
+  font-size: 22px;
+  font-weight: 400;
+  color: #1a1a1a;
+  margin-bottom: 10px;
+}
+.thanks-sub {
+  font-size: 14px;
+  color: #888;
+  line-height: 1.7;
+  margin-bottom: 32px;
+}
+.line-btn {
+  display: inline-block;
+  padding: 14px 32px;
+  background: #06C755;
+  color: #fff;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+  letter-spacing: 0.04em;
+}
+.reset-btn {
+  display: block;
+  margin: 16px auto 0;
+  padding: 12px 24px;
+  font-size: 13px;
+  color: #aaa;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* 管理画面 */
+.admin-section { margin-bottom: 28px; }
+.admin-section-title {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #aaa;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #efefed;
+}
+.form-rows { display: flex; flex-direction: column; gap: 14px; }
+.form-row { display: flex; flex-direction: column; gap: 5px; }
+.form-label { font-size: 12px; color: #888; letter-spacing: 0.03em; }
+.form-input {
+  padding: 11px 14px;
+  font-size: 15px;
+  border: 1px solid #efefed;
+  border-radius: 10px;
+  background: #fff;
+  color: #1a1a1a;
+  font-family: inherit;
+  outline: none;
+}
+.form-input:focus { border-color: #8DCFCF; }
+.save-btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 500;
+  background: #1a1a1a;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.04em;
+  margin-top: 8px;
+}
+.save-notice {
+  font-size: 13px;
+  color: #4caf85;
+  text-align: center;
+  padding: 10px;
+  display: none;
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="logo">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="71.529 388.663 419.723 73.079" height="28">
+        <path fill="#63E1E5" d="M388.27,414.932h-29.736c-6.102,0-11.064,4.964-11.064,11.065v11.317c0,6.102,4.963,11.066,11.064,11.066h29.736c6.102,0,11.064-4.965,11.064-11.066v-11.317C399.334,419.896,394.371,414.932,388.27,414.932z M394.92,437.314c0,3.668-2.983,6.651-6.65,6.651h-29.736c-3.667,0-6.65-2.983-6.65-6.651v-11.317c0-3.667,2.983-6.651,6.65-6.651h29.736c3.667,0,6.65,2.984,6.65,6.651V437.314z"/>
+        <path fill="#AEAFB3" d="M295.882,414.932h-29.076c-6.167,0-11.185,5.018-11.185,11.185v22.895h4.415v-22.895c0-3.733,3.037-6.771,6.771-6.771h29.076c3.733,0,6.771,3.037,6.771,6.771v22.895h4.414v-22.895C307.067,419.949,302.05,414.932,295.882,414.932z"/>
+        <path fill="#AEAFB3" d="M111.089,388.663H82.656c-6.136,0-11.127,4.992-11.127,11.128v50.292h4.414v-24.079h41.86v24.079h4.415v-50.292C122.217,393.655,117.226,388.663,111.089,388.663z M75.943,421.589v-21.799c0-3.702,3.012-6.713,6.713-6.713h28.433c3.702,0,6.713,3.012,6.713,6.713v21.799H75.943z"/>
+        <path fill="#AEAFB3" d="M481.881,429.623h-32.095c-2.833,0-5.138-2.306-5.138-5.139c0-2.833,2.305-5.139,5.138-5.139h41.282v-4.414h-41.282c-5.267,0-9.552,4.285-9.552,9.553c0,5.267,4.285,9.553,9.552,9.553h32.095c2.737,0,4.965,2.227,4.965,4.965c0,2.737-2.228,4.964-4.965,4.964h-41.522v4.415h41.522c5.172,0,9.379-4.207,9.379-9.379S487.053,429.623,481.881,429.623z"/>
+        <path fill="#AEAFB3" d="M217.47,410.326l-3.948-1.974c-2.031,4.062-4.175,5.848-6.706,7.037c-0.981-0.295-2.021-0.457-3.098-0.457h-29.934c-5.931,0-10.756,4.825-10.756,10.756v11.936c0,5.932,4.825,10.758,10.756,10.758h23.405c2.412,0,4.374,1.961,4.374,4.373s-1.962,4.374-4.374,4.374h-25.41v4.413h25.41c4.845,0,8.788-3.941,8.788-8.787s-3.942-8.788-8.788-8.788h-23.405c-3.497,0-6.342-2.845-6.342-6.343v-11.936c0-3.496,2.845-6.342,6.342-6.342h29.934c3.497,0,6.342,2.846,6.342,6.342v10.924h4.414v-10.924c0-3.027-1.259-5.766-3.28-7.723C213.338,416.493,215.523,414.22,217.47,410.326z"/>
+      </svg>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('sim',this)">ローン試算</button>
+      <button class="tab" onclick="showTab('survey',this)">アンケート</button>
+      <button class="tab" onclick="showTab('admin',this)">管理</button>
+    </div>
+  </div>
+
+  <!-- ローンシミュ -->
+  <div id="screen-sim" class="screen active">
+    <div class="prop-header">
+      <div class="prop-label">物件</div>
+      <div class="prop-name" id="s-name">エクセラート八尾</div>
+      <div class="prop-price" id="s-price">販売価格 3,480万円</div>
+    </div>
+
+    <div class="main-block">
+      <div class="main-label">月々の総支払額（概算）</div>
+      <div>
+        <span class="main-amount" id="s-total">—</span><span class="main-unit">円</span>
+      </div>
+      <div class="main-sub">管理費・修繕積立金込み</div>
+    </div>
+
+    <div class="breakdown">
+      <div class="bk"><div class="bk-label">ローン返済</div><div class="bk-val" id="s-loan">—</div></div>
+      <div class="bk"><div class="bk-label">管理費</div><div class="bk-val" id="s-mgmt">—</div></div>
+      <div class="bk"><div class="bk-label">修繕積立金</div><div class="bk-val" id="s-repair">—</div></div>
+      <div class="bk"><div class="bk-label">駐車場代</div><div class="bk-val" id="s-parking">—</div></div>
+    </div>
+
+    <div class="diff-row">
+      <span class="diff-label">今の家賃との差額</span>
+      <span class="diff-val zero" id="s-diff">家賃を入力すると表示</span>
+    </div>
+
+    <div class="sliders">
+      <div class="sl-row">
+        <div class="sl-head"><span class="sl-name">頭金</span><span class="sl-val" id="v-downpay">—</span></div>
+        <input type="range" id="sl-downpay" min="0" max="1000" step="10" oninput="calcUpdate()">
+      </div>
+      <div class="sl-row">
+        <div class="sl-head"><span class="sl-name">金利（年）</span><span class="sl-val" id="v-rate">—</span></div>
+        <input type="range" id="sl-rate" min="0.1" max="4.0" step="0.05" oninput="calcUpdate()">
+      </div>
+      <div class="sl-row">
+        <div class="sl-head"><span class="sl-name">返済年数</span><span class="sl-val" id="v-years">—</span></div>
+        <input type="range" id="sl-years" min="10" max="35" step="1" oninput="calcUpdate()">
+      </div>
+      <div class="sl-row">
+        <div class="sl-head"><span class="sl-name">今の家賃（任意）</span><span class="sl-val" id="v-rent">—</span></div>
+        <input type="range" id="sl-rent" min="0" max="30" step="1" oninput="calcUpdate()">
+      </div>
+    </div>
+
+    <p class="note">※このシミュレーションは概算です。実際の借入条件・諸費用は金融機関・審査内容・金利条件等により異なります。</p>
+  </div>
+
+  <!-- アンケート -->
+  <div id="screen-survey" class="screen">
+    <div id="survey-body"></div>
+  </div>
+
+  <!-- 管理 -->
+  <div id="screen-admin" class="screen">
+    <div class="admin-section">
+      <div class="admin-section-title">物件情報</div>
+      <div class="form-rows">
+        <div class="form-row"><label class="form-label">物件名</label><input class="form-input" id="a-name" type="text"></div>
+        <div class="form-row"><label class="form-label">販売価格（万円）</label><input class="form-input" id="a-price" type="number"></div>
+        <div class="form-row"><label class="form-label">管理費（月額・万円）</label><input class="form-input" id="a-mgmt" type="number"></div>
+        <div class="form-row"><label class="form-label">修繕積立金（月額・万円）</label><input class="form-input" id="a-repair" type="number"></div>
+        <div class="form-row"><label class="form-label">駐車場代（月額・万円）</label><input class="form-input" id="a-parking" type="number"></div>
+      </div>
+    </div>
+    <div class="admin-section">
+      <div class="admin-section-title">スライダー初期値</div>
+      <div class="form-rows">
+        <div class="form-row"><label class="form-label">初期金利（%）</label><input class="form-input" id="a-rate" type="number" step="0.05"></div>
+        <div class="form-row"><label class="form-label">初期返済年数（年）</label><input class="form-input" id="a-years" type="number"></div>
+        <div class="form-row"><label class="form-label">初期頭金（万円）</label><input class="form-input" id="a-downpay" type="number"></div>
+      </div>
+    </div>
+    <button class="save-btn" onclick="saveAdmin()">保存して反映</button>
+    <div class="save-notice" id="save-notice">保存しました</div>
+  </div>
+</div>
+
+<script>
+// ===== 初期設定（ここを直接書き換えてもOK）=====
+var CFG = {
+  name: 'エクセラート八尾',
+  price: 2870,
+  mgmt: 1.077,
+  repair: 1.502,
+  parking: 0,
+  initRate: 1.5,
+  initYears: 35,
+  initDownpay: 200
+};
+
+// ===== アンケート設問 =====
+var QUESTIONS = [
+  { id:'q1', text:'年齢層を教えてください', opts:['20代','30代','40代','50代以上'] },
+  { id:'q2', text:'家族構成を教えてください', opts:['単身','夫婦','夫婦＋子ども','その他'] },
+  { id:'q3', text:'この物件をどこでお知りになりましたか？', opts:['SUUMO','Instagram','Google','チラシ','紹介','その他'] },
+  { id:'q4', text:'物件の魅力に感じた点はどこですか？', opts:['価格','立地','デザイン','間取り','リノベーション内容','その他'] },
+  { id:'q5', text:'ご購入のご希望時期は？', opts:['3ヶ月以内','半年以内','1年以内','未定'] },
+  { id:'q6', text:'住宅ローンについては？', opts:['事前審査済','これから検討','現金購入','未定'] },
+  { id:'q7', text:'月々の支払いについて', opts:['問題ない','少し不安','かなり不安'] },
+  { id:'q8', text:'管理費・修繕積立金などの毎月費用について', opts:['理解している','なんとなく理解','よく分からない'] },
+  { id:'q9', text:'今回の物件で気になる点は？', opts:['価格','ローン','諸費用','立地','将来性','特にない'] },
+  { id:'q10', text:'今回の物件についてのお気持ちは？', opts:['前向きに検討したい','条件が合えば検討','見送り予定','未定'] },
+  { id:'q11', text:'気になる点やご質問があればご記入ください（任意）', opts:null }
+];
+
+var answers = {};
+var currentQ = 0;
+
+// ===== タブ切り替え =====
+function showTab(id, btn) {
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(b){ b.classList.remove('active'); });
+  document.getElementById('screen-'+id).classList.add('active');
+  if(btn) btn.classList.add('active');
+  if(id==='survey') renderQ(currentQ);
+  if(id==='admin') fillAdmin();
+}
+
+// ===== ローン計算 =====
+function fmt(man) {
+  return Math.round(man*10000).toLocaleString('ja-JP')+'円';
+}
+function calcLoan(p_man, rate, years) {
+  var p = p_man*10000;
+  if(rate===0) return p/(years*12);
+  var r = rate/100/12;
+  var n = years*12;
+  return p*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1);
+}
+function initSliders() {
+  var sl = document.getElementById('sl-downpay');
+  sl.max = Math.floor(CFG.price*0.5);
+  sl.value = Math.min(CFG.initDownpay, sl.max);
+  document.getElementById('sl-rate').value = CFG.initRate;
+  document.getElementById('sl-years').value = CFG.initYears;
+  document.getElementById('sl-rent').value = 0;
+}
+function calcUpdate() {
+  var downpay = parseFloat(document.getElementById('sl-downpay').value);
+  var rate = parseFloat(document.getElementById('sl-rate').value);
+  var years = parseInt(document.getElementById('sl-years').value);
+  var rent = parseFloat(document.getElementById('sl-rent').value);
+  var principal = CFG.price - downpay;
+  var loanM = calcLoan(principal, rate, years)/10000;
+  var total = loanM + CFG.mgmt + CFG.repair + CFG.parking;
+  document.getElementById('v-downpay').textContent = downpay.toLocaleString()+'万円';
+  document.getElementById('v-rate').textContent = rate.toFixed(2)+'%';
+  document.getElementById('v-years').textContent = years+'年';
+  document.getElementById('v-rent').textContent = rent===0?'未入力':rent.toLocaleString()+'万円';
+  document.getElementById('s-total').textContent = Math.round(total*10000).toLocaleString('ja-JP');
+  document.getElementById('s-loan').textContent = fmt(loanM);
+  document.getElementById('s-mgmt').textContent = fmt(CFG.mgmt);
+  document.getElementById('s-repair').textContent = fmt(CFG.repair);
+  document.getElementById('s-parking').textContent = CFG.parking>0?fmt(CFG.parking):'—';
+  document.getElementById('s-name').textContent = CFG.name;
+  document.getElementById('s-price').textContent = '販売価格 '+CFG.price.toLocaleString()+'万円';
+  var diffEl = document.getElementById('s-diff');
+  if(rent===0){
+    diffEl.textContent='家賃を入力すると表示';
+    diffEl.className='diff-val zero';
+  } else {
+    var diff = total-rent;
+    var sign = diff>0?'+':'';
+    diffEl.textContent = sign+Math.round(diff*10000).toLocaleString('ja-JP')+'円';
+    diffEl.className='diff-val '+(diff>0?'plus':diff<0?'minus':'zero');
+  }
+}
+
+// ===== アンケート =====
+function renderQ(idx) {
+  var body = document.getElementById('survey-body');
+  if(idx >= QUESTIONS.length) {
+    renderThanks();
+    return;
+  }
+  var q = QUESTIONS[idx];
+  var dots = QUESTIONS.map(function(_,i){
+    var cls = i<idx?'done':i===idx?'active':'';
+    return '<div class="q-dot '+cls+'"></div>';
+  }).join('');
+
+  var optHtml = '';
+  if(q.opts) {
+    optHtml = '<div class="q-options">';
+    q.opts.forEach(function(o){
+      var sel = answers[q.id]===o?'selected':'';
+      optHtml += '<button class="q-opt '+sel+'" onclick="selectOpt(this,\''+q.id+'\',\''+o+'\')">' + o + '</button>';
+    });
+    optHtml += '</div>';
+  } else {
+    optHtml = '<textarea class="q-textarea" id="q-free" placeholder="任意でご記入ください">'+(answers[q.id]||'')+'</textarea>';
+  }
+
+  var backBtn = idx>0 ? '<button class="btn-back" onclick="goQ('+( idx-1)+')">戻る</button>' : '<div></div>';
+  var nextLabel = idx===QUESTIONS.length-1 ? '送信する' : '次へ';
+  var disabled = (q.opts && !answers[q.id]) ? 'disabled' : '';
+
+  body.innerHTML =
+    '<div class="q-progress">'+dots+'</div>' +
+    '<div class="q-num">Q'+(idx+1)+' / '+QUESTIONS.length+'</div>' +
+    '<div class="q-text">'+q.q_text_override || q.text+'</div>' +
+    optHtml +
+    '<div class="q-nav">'+backBtn+'<button class="btn-next" id="btn-next" '+disabled+' onclick="goNext('+idx+')">'+nextLabel+'</button></div>';
+
+  // 自由記述の場合は常にnext有効
+  if(!q.opts) {
+    document.getElementById('btn-next').disabled = false;
+  }
+}
+
+function selectOpt(btn, qid, val) {
+  answers[qid] = val;
+  var opts = btn.parentElement.querySelectorAll('.q-opt');
+  opts.forEach(function(b){ b.classList.remove('selected'); });
+  btn.classList.add('selected');
+  var nextBtn = document.getElementById('btn-next');
+  if(nextBtn) nextBtn.disabled = false;
+}
+
+function goNext(idx) {
+  var q = QUESTIONS[idx];
+  if(!q.opts) {
+    var ta = document.getElementById('q-free');
+    if(ta) answers[q.id] = ta.value;
+  }
+  currentQ = idx+1;
+  renderQ(currentQ);
+}
+
+function goQ(idx) {
+  currentQ = idx;
+  renderQ(idx);
+}
+
+function renderThanks() {
+  document.getElementById('survey-body').innerHTML =
+    '<div class="thanks">' +
+    '<div class="thanks-icon">✓</div>' +
+    '<div class="thanks-title">ありがとうございました</div>' +
+    '<div class="thanks-sub">ご回答いただきありがとうございます。<br>担当者よりご連絡させていただきます。</div>' +
+    '<a class="line-btn" href="https://line.me/R/" target="_blank">LINEで相談する</a>' +
+    '<button class="reset-btn" onclick="resetSurvey()">最初からやり直す</button>' +
+    '</div>';
+}
+
+function resetSurvey() {
+  answers = {};
+  currentQ = 0;
+  renderQ(0);
+}
+
+// ===== 管理画面 =====
+function fillAdmin() {
+  document.getElementById('a-name').value = CFG.name;
+  document.getElementById('a-price').value = CFG.price;
+  document.getElementById('a-mgmt').value = CFG.mgmt;
+  document.getElementById('a-repair').value = CFG.repair;
+  document.getElementById('a-parking').value = CFG.parking;
+  document.getElementById('a-rate').value = CFG.initRate;
+  document.getElementById('a-years').value = CFG.initYears;
+  document.getElementById('a-downpay').value = CFG.initDownpay;
+}
+
+function saveAdmin() {
+  CFG.name = document.getElementById('a-name').value;
+  CFG.price = parseFloat(document.getElementById('a-price').value);
+  CFG.mgmt = parseFloat(document.getElementById('a-mgmt').value);
+  CFG.repair = parseFloat(document.getElementById('a-repair').value);
+  CFG.parking = parseFloat(document.getElementById('a-parking').value)||0;
+  CFG.initRate = parseFloat(document.getElementById('a-rate').value);
+  CFG.initYears = parseInt(document.getElementById('a-years').value);
+  CFG.initDownpay = parseFloat(document.getElementById('a-downpay').value);
+  initSliders();
+  calcUpdate();
+  var n = document.getElementById('save-notice');
+  n.style.display='block';
+  setTimeout(function(){ n.style.display='none'; }, 2000);
+}
+
+// ===== 初期化 =====
+initSliders();
+calcUpdate();
+renderQ(0);
+</script>
+</body>
+</html>
