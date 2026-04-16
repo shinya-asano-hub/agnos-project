@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>メール検索</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a1a; color: #e8e4de; font-family: -apple-system, sans-serif; min-height: 100vh; }
+
+  /* ===== Loading Overlay (fullscreen center) ===== */
+  #loading-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: #000;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.6s ease, transform 0.8s cubic-bezier(0.4,0,0.2,1);
+  }
+  #loading-overlay.hide { opacity: 0; transform: translateY(-100%); pointer-events: none; }
+  .loading-inner { position: relative; display: flex; align-items: center; justify-content: center; }
+  .loading-ring { position: absolute; width: 220px; height: 220px; }
+  .loading-ring svg { position: absolute; top: 0; left: 0; transform: rotate(-90deg); }
+  .loading-ring-bg { fill: none; stroke: rgba(99,225,229,0.1); stroke-width: 1; }
+  .loading-ring-progress { fill: none; stroke: #63E1E5; stroke-width: 1; stroke-linecap: round; stroke-dasharray: 653.5; stroke-dashoffset: 653.5; }
+
+  /* ===== Header ===== */
+  .header { position: relative; padding: 1.2rem 2rem; border-bottom: 1px solid #2a2a2a; display: flex; align-items: center; z-index: 100; background: #1a1a1a; }
+  .header svg { height: 18px; width: auto; }
+  .header-title { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); font-size: 0.85rem; color: #888; letter-spacing: 0.15em; }
+
+  /* ===== Main ===== */
+  .main { padding: 2rem; max-width: 700px; margin: 0 auto; position: relative; z-index: 100; background: #1a1a1a; }
+  .row { display: flex; gap: 0.8rem; margin-bottom: 1rem; }
+  select, input { background: #2a2a2a; border: 1px solid #3a3a3a; color: #e8e4de; padding: 0.7rem 1rem; border-radius: 8px; font-size: 0.95rem; outline: none; }
+  select { width: 200px; cursor: pointer; }
+  input { flex: 1; }
+  input:focus, select:focus { border-color: #63E1E5; }
+  button { background: #63E1E5; color: #1a1a1a; border: none; padding: 0.7rem 1.5rem; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  button:hover { background: #4fc8cc; }
+  .btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .btn-gmail { background: none; border: 1px solid #3a3a3a; color: #e8e4de; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; }
+  .btn-gmail:hover { border-color: #63E1E5; color: #63E1E5; }
+  #status { font-size: 0.85rem; color: #888; margin-bottom: 1rem; }
+  .result { background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 8px; padding: 1rem; margin-bottom: 0.8rem; }
+  .result-subject { font-weight: 500; color: #e8e4de; margin-bottom: 0.4rem; }
+  .result-from { font-size: 0.8rem; color: #888; margin-bottom: 0.6rem; }
+  .result-body { font-size: 0.85rem; color: #aaa; line-height: 1.6; white-space: pre-wrap; }
+  .no-result { color: #666; text-align: center; padding: 2rem; }
+</style>
+</head>
+<body>
+
+<!-- ===== Full-screen Loading Overlay ===== -->
+<div id="loading-overlay">
+  <div class="loading-inner">
+    <div class="loading-ring">
+      <svg width="220" height="220" viewBox="0 0 220 220">
+        <circle class="loading-ring-bg" cx="110" cy="110" r="104"/>
+        <circle class="loading-ring-progress" id="loadRing" cx="110" cy="110" r="104"/>
+      </svg>
+    </div>
+    <svg viewBox="60 378 445 95" width="260" height="60" style="overflow:visible;position:relative;z-index:2;">
+      <defs>
+        <filter id="glow" x="-150%" y="-150%" width="400%" height="400%"><feFlood flood-color="#63E1E5" flood-opacity="1" result="c"/><feComposite in="c" in2="SourceGraphic" operator="in" result="cl"/><feGaussianBlur in="cl" stdDeviation="10" result="b"/><feComposite in="b" in2="SourceGraphic" operator="out" result="g"/><feMerge><feMergeNode in="g"/></feMerge></filter>
+      </defs>
+      <g id="lgA" opacity="0" filter="url(#glow)"><path fill="#63E1E5" d="M111.089,388.663H82.656c-6.136,0-11.127,4.992-11.127,11.128v50.292h4.414v-24.079h41.86v24.079h4.415v-50.292C122.217,393.655,117.226,388.663,111.089,388.663z M75.943,421.589v-21.799c0-3.702,3.012-6.713,6.713-6.713h28.433c3.702,0,6.713,3.012,6.713,6.713v21.799H75.943z"/></g>
+      <g id="lgg" opacity="0" filter="url(#glow)"><path fill="#63E1E5" d="M217.47,410.326l-3.948-1.974c-2.031,4.062-4.175,5.848-6.706,7.037c-0.981-0.295-2.021-0.457-3.098-0.457h-29.934c-5.931,0-10.756,4.825-10.756,10.756v11.936c0,5.932,4.825,10.758,10.756,10.758h23.405c2.412,0,4.374,1.961,4.374,4.373s-1.962,4.374-4.374,4.374h-25.41v4.413h25.41c4.845,0,8.788-3.941,8.788-8.787s-3.942-8.788-8.788-8.788h-23.405c-3.497,0-6.342-2.845-6.342-6.343v-11.936c0-3.496,2.845-6.342,6.342-6.342h29.934c3.497,0,6.342,2.846,6.342,6.342v10.924h4.414v-10.924c0-3.027-1.259-5.766-3.28-7.723C213.338,416.493,215.523,414.22,217.47,410.326z"/></g>
+      <g id="lgn" opacity="0" filter="url(#glow)"><path fill="#63E1E5" d="M295.882,414.932h-29.076c-6.167,0-11.185,5.018-11.185,11.185v22.895h4.415v-22.895c0-3.733,3.037-6.771,6.771-6.771h29.076c3.733,0,6.771,3.037,6.771,6.771v22.895h4.414v-22.895C307.067,419.949,302.05,414.932,295.882,414.932z"/></g>
+      <g id="lgo" opacity="0" filter="url(#glow)"><path fill="#63E1E5" d="M388.27,414.932h-29.736c-6.102,0-11.064,4.964-11.064,11.065v11.317c0,6.102,4.963,11.066,11.064,11.066h29.736c6.102,0,11.064-4.965,11.064-11.066v-11.317C399.334,419.896,394.371,414.932,388.27,414.932z M394.92,437.314c0,3.668-2.983,6.651-6.65,6.651h-29.736c-3.667,0-6.65-2.983-6.65-6.651v-11.317c0-3.667,2.983-6.651,6.65-6.651h29.736c3.667,0,6.65,2.984,6.65,6.651V437.314z"/></g>
+      <g id="lgs" opacity="0" filter="url(#glow)"><path fill="#63E1E5" d="M481.881,429.623h-32.095c-2.833,0-5.138-2.306-5.138-5.139c0-2.833,2.305-5.139,5.138-5.139h41.282v-4.414h-41.282c-5.267,0-9.552,4.285-9.552,9.553c0,5.267,4.285,9.553,9.552,9.553h32.095c2.737,0,4.965,2.227,4.965,4.965c0,2.737-2.228,4.964-4.965,4.964h-41.522v4.415h41.522c5.172,0,9.379-4.207,9.379-9.379S487.053,429.623,481.881,429.623z"/></g>
+      <g id="llA" opacity="0"><path fill="#000" d="M111.089,388.663H82.656c-6.136,0-11.127,4.992-11.127,11.128v50.292h4.414v-24.079h41.86v24.079h4.415v-50.292C122.217,393.655,117.226,388.663,111.089,388.663z M75.943,421.589v-21.799c0-3.702,3.012-6.713,6.713-6.713h28.433c3.702,0,6.713,3.012,6.713,6.713v21.799H75.943z"/></g>
+      <g id="llg" opacity="0"><path fill="#000" d="M217.47,410.326l-3.948-1.974c-2.031,4.062-4.175,5.848-6.706,7.037c-0.981-0.295-2.021-0.457-3.098-0.457h-29.934c-5.931,0-10.756,4.825-10.756,10.756v11.936c0,5.932,4.825,10.758,10.756,10.758h23.405c2.412,0,4.374,1.961,4.374,4.373s-1.962,4.374-4.374,4.374h-25.41v4.413h25.41c4.845,0,8.788-3.941,8.788-8.787s-3.942-8.788-8.788-8.788h-23.405c-3.497,0-6.342-2.845-6.342-6.343v-11.936c0-3.496,2.845-6.342,6.342-6.342h29.934c3.497,0,6.342,2.846,6.342,6.342v10.924h4.414v-10.924c0-3.027-1.259-5.766-3.28-7.723C213.338,416.493,215.523,414.22,217.47,410.326z"/></g>
+      <g id="lln" opacity="0"><path fill="#000" d="M295.882,414.932h-29.076c-6.167,0-11.185,5.018-11.185,11.185v22.895h4.415v-22.895c0-3.733,3.037-6.771,6.771-6.771h29.076c3.733,0,6.771,3.037,6.771,6.771v22.895h4.414v-22.895C307.067,419.949,302.05,414.932,295.882,414.932z"/></g>
+      <g id="llo" opacity="0"><path fill="#000" d="M388.27,414.932h-29.736c-6.102,0-11.064,4.964-11.064,11.065v11.317c0,6.102,4.963,11.066,11.064,11.066h29.736c6.102,0,11.064-4.965,11.064-11.066v-11.317C399.334,419.896,394.371,414.932,388.27,414.932z M394.92,437.314c0,3.668-2.983,6.651-6.65,6.651h-29.736c-3.667,0-6.65-2.983-6.65-6.651v-11.317c0-3.667,2.983-6.651,6.65-6.651h29.736c3.667,0,6.65,2.984,6.65,6.651V437.314z"/></g>
+      <g id="lls" opacity="0"><path fill="#000" d="M481.881,429.623h-32.095c-2.833,0-5.138-2.306-5.138-5.139c0-2.833,2.305-5.139,5.138-5.139h41.282v-4.414h-41.282c-5.267,0-9.552,4.285-9.552,9.553c0,5.267,4.285,9.553,9.552,9.553h32.095c2.737,0,4.965,2.227,4.965,4.965c0,2.737-2.228,4.964-4.965,4.964h-41.522v4.415h41.522c5.172,0,9.379-4.207,9.379-9.379S487.053,429.623,481.881,429.623z"/></g>
+    </svg>
+  </div>
+</div>
+
+<!-- ===== Search Loading Overlay (appears during search) ===== -->
+<div id="search-loading" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:60;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;">
+  <div style="position:relative;display:flex;align-items:center;justify-content:center;">
+    <div style="position:absolute;width:220px;height:220px;">
+      <svg style="position:absolute;top:0;left:0;transform:rotate(-90deg);" width="220" height="220" viewBox="0 0 220 220">
+        <circle fill="none" stroke="rgba(99,225,229,0.1)" stroke-width="1" cx="110" cy="110" r="104"/>
+        <circle id="searchRing" fill="none" stroke="#63E1E5" stroke-width="1" stroke-linecap="round" cx="110" cy="110" r="104" stroke-dasharray="653.5" stroke-dashoffset="653.5"/>
+      </svg>
+    </div>
+    <svg viewBox="60 378 445 95" width="260" height="60" style="overflow:visible;position:relative;z-index:2;">
+      <defs><filter id="sg" x="-150%" y="-150%" width="400%" height="400%"><feFlood flood-color="#63E1E5" flood-opacity="1" result="c"/><feComposite in="c" in2="SourceGraphic" operator="in" result="cl"/><feGaussianBlur in="cl" stdDeviation="10" result="b"/><feComposite in="b" in2="SourceGraphic" operator="out" result="g"/><feMerge><feMergeNode in="g"/></feMerge></filter></defs>
+      <g id="sgA" opacity="0" filter="url(#sg)"><path fill="#63E1E5" d="M111.089,388.663H82.656c-6.136,0-11.127,4.992-11.127,11.128v50.292h4.414v-24.079h41.86v24.079h4.415v-50.292C122.217,393.655,117.226,388.663,111.089,388.663z M75.943,421.589v-21.799c0-3.702,3.012-6.713,6.713-6.713h28.433c3.702,0,6.713,3.012,6.713,6.713v21.799H75.943z"/></g>
+      <g id="sgg" opacity="0" filter="url(#sg)"><path fill="#63E1E5" d="M217.47,410.326l-3.948-1.974c-2.031,4.062-4.175,5.848-6.706,7.037c-0.981-0.295-2.021-0.457-3.098-0.457h-29.934c-5.931,0-10.756,4.825-10.756,10.756v11.936c0,5.932,4.825,10.758,10.756,10.758h23.405c2.412,0,4.374,1.961,4.374,4.373s-1.962,4.374-4.374,4.374h-25.41v4.413h25.41c4.845,0,8.788-3.941,8.788-8.787s-3.942-8.788-8.788-8.788h-23.405c-3.497,0-6.342-2.845-6.342-6.343v-11.936c0-3.496,2.845-6.342,6.342-6.342h29.934c3.497,0,6.342,2.846,6.342,6.342v10.924h4.414v-10.924c0-3.027-1.259-5.766-3.28-7.723C213.338,416.493,215.523,414.22,217.47,410.326z"/></g>
+      <g id="sgn" opacity="0" filter="url(#sg)"><path fill="#63E1E5" d="M295.882,414.932h-29.076c-6.167,0-11.185,5.018-11.185,11.185v22.895h4.415v-22.895c0-3.733,3.037-6.771,6.771-6.771h29.076c3.733,0,6.771,3.037,6.771,6.771v22.895h4.414v-22.895C307.067,419.949,302.05,414.932,295.882,414.932z"/></g>
+      <g id="sgo" opacity="0" filter="url(#sg)"><path fill="#63E1E5" d="M388.27,414.932h-29.736c-6.102,0-11.064,4.964-11.064,11.065v11.317c0,6.102,4.963,11.066,11.064,11.066h29.736c6.102,0,11.064-4.965,11.064-11.066v-11.317C399.334,419.896,394.371,414.932,388.27,414.932z M394.92,437.314c0,3.668-2.983,6.651-6.65,6.651h-29.736c-3.667,0-6.65-2.983-6.65-6.651v-11.317c0-3.667,2.983-6.651,6.65-6.651h29.736c3.667,0,6.65,2.984,6.65,6.651V437.314z"/></g>
+      <g id="sgs" opacity="0" filter="url(#sg)"><path fill="#63E1E5" d="M481.881,429.623h-32.095c-2.833,0-5.138-2.306-5.138-5.139c0-2.833,2.305-5.139,5.138-5.139h41.282v-4.414h-41.282c-5.267,0-9.552,4.285-9.552,9.553c0,5.267,4.285,9.553,9.552,9.553h32.095c2.737,0,4.965,2.227,4.965,4.965c0,2.737-2.228,4.964-4.965,4.964h-41.522v4.415h41.522c5.172,0,9.379-4.207,9.379-9.379S487.053,429.623,481.881,429.623z"/></g>
+      <g id="slA" opacity="0"><path fill="rgba(0,0,0,0.9)" d="M111.089,388.663H82.656c-6.136,0-11.127,4.992-11.127,11.128v50.292h4.414v-24.079h41.86v24.079h4.415v-50.292C122.217,393.655,117.226,388.663,111.089,388.663z M75.943,421.589v-21.799c0-3.702,3.012-6.713,6.713-6.713h28.433c3.702,0,6.713,3.012,6.713,6.713v21.799H75.943z"/></g>
+      <g id="slg" opacity="0"><path fill="rgba(0,0,0,0.9)" d="M217.47,410.326l-3.948-1.974c-2.031,4.062-4.175,5.848-6.706,7.037c-0.981-0.295-2.021-0.457-3.098-0.457h-29.934c-5.931,0-10.756,4.825-10.756,10.756v11.936c0,5.932,4.825,10.758,10.756,10.758h23.405c2.412,0,4.374,1.961,4.374,4.373s-1.962,4.374-4.374,4.374h-25.41v4.413h25.41c4.845,0,8.788-3.941,8.788-8.787s-3.942-8.788-8.788-8.788h-23.405c-3.497,0-6.342-2.845-6.342-6.343v-11.936c0-3.496,2.845-6.342,6.342-6.342h29.934c3.497,0,6.342,2.846,6.342,6.342v10.924h4.414v-10.924c0-3.027-1.259-5.766-3.28-7.723C213.338,416.493,215.523,414.22,217.47,410.326z"/></g>
+      <g id="sln" opacity="0"><path fill="rgba(0,0,0,0.9)" d="M295.882,414.932h-29.076c-6.167,0-11.185,5.018-11.185,11.185v22.895h4.415v-22.895c0-3.733,3.037-6.771,6.771-6.771h29.076c3.733,0,6.771,3.037,6.771,6.771v22.895h4.414v-22.895C307.067,419.949,302.05,414.932,295.882,414.932z"/></g>
+      <g id="slo" opacity="0"><path fill="rgba(0,0,0,0.9)" d="M388.27,414.932h-29.736c-6.102,0-11.064,4.964-11.064,11.065v11.317c0,6.102,4.963,11.066,11.064,11.066h29.736c6.102,0,11.064-4.965,11.064-11.066v-11.317C399.334,419.896,394.371,414.932,388.27,414.932z M394.92,437.314c0,3.668-2.983,6.651-6.65,6.651h-29.736c-3.667,0-6.65-2.983-6.65-6.651v-11.317c0-3.667,2.983-6.651,6.65-6.651h29.736c3.667,0,6.65,2.984,6.65,6.651V437.314z"/></g>
+      <g id="sls" opacity="0"><path fill="rgba(0,0,0,0.9)" d="M481.881,429.623h-32.095c-2.833,0-5.138-2.306-5.138-5.139c0-2.833,2.305-5.139,5.138-5.139h41.282v-4.414h-41.282c-5.267,0-9.552,4.285-9.552,9.553c0,5.267,4.285,9.553,9.552,9.553h32.095c2.737,0,4.965,2.227,4.965,4.965c0,2.737-2.228,4.964-4.965,4.964h-41.522v4.415h41.522c5.172,0,9.379-4.207,9.379-9.379S487.053,429.623,481.881,429.623z"/></g>
+    </svg>
+  </div>
+</div>
+
+<!-- ===== Header: Logo left + title center ===== -->
+<div class="header">
+  <svg viewBox="71 388 420 74" xmlns="http://www.w3.org/2000/svg">
+    <path fill="#63E1E5" d="M388.27,414.932h-29.736c-6.102,0-11.064,4.964-11.064,11.065v11.317c0,6.102,4.963,11.066,11.064,11.066h29.736c6.102,0,11.064-4.965,11.064-11.066v-11.317C399.334,419.896,394.371,414.932,388.27,414.932z M394.92,437.314c0,3.668-2.983,6.651-6.65,6.651h-29.736c-3.667,0-6.65-2.983-6.65-6.651v-11.317c0-3.667,2.983-6.651,6.65-6.651h29.736c3.667,0,6.65,2.984,6.65,6.651V437.314z"/>
+    <path fill="#AEAFB3" d="M295.882,414.932h-29.076c-6.167,0-11.185,5.018-11.185,11.185v22.895h4.415v-22.895c0-3.733,3.037-6.771,6.771-6.771h29.076c3.733,0,6.771,3.037,6.771,6.771v22.895h4.414v-22.895C307.067,419.949,302.05,414.932,295.882,414.932z"/>
+    <path fill="#AEAFB3" d="M111.089,388.663H82.656c-6.136,0-11.127,4.992-11.127,11.128v50.292h4.414v-24.079h41.86v24.079h4.415v-50.292C122.217,393.655,117.226,388.663,111.089,388.663z M75.943,421.589v-21.799c0-3.702,3.012-6.713,6.713-6.713h28.433c3.702,0,6.713,3.012,6.713,6.713v21.799H75.943z"/>
+    <path fill="#AEAFB3" d="M481.881,429.623h-32.095c-2.833,0-5.138-2.306-5.138-5.139c0-2.833,2.305-5.139,5.138-5.139h41.282v-4.414h-41.282c-5.267,0-9.552,4.285-9.552,9.553c0,5.267,4.285,9.553,9.552,9.553h32.095c2.737,0,4.965,2.227,4.965,4.965c0,2.737-2.228,4.964-4.965,4.964h-41.522v4.415h41.522c5.172,0,9.379-4.207,9.379-9.379S487.053,429.623,481.881,429.623z"/>
+    <path fill="#AEAFB3" d="M217.47,410.326l-3.948-1.974c-2.031,4.062-4.175,5.848-6.706,7.037c-0.981-0.295-2.021-0.457-3.098-0.457h-29.934c-5.931,0-10.756,4.825-10.756,10.756v11.936c0,5.932,4.825,10.758,10.756,10.758h23.405c2.412,0,4.374,1.961,4.374,4.373s-1.962,4.374-4.374,4.374h-25.41v4.413h25.41c4.845,0,8.788-3.941,8.788-8.787s-3.942-8.788-8.788-8.788h-23.405c-3.497,0-6.342-2.845-6.342-6.343v-11.936c0-3.496,2.845-6.342,6.342-6.342h29.934c3.497,0,6.342,2.846,6.342,6.342v10.924h4.414v-10.924c0-3.027-1.259-5.766-3.28-7.723C213.338,416.493,215.523,414.22,217.47,410.326z"/>
+  </svg>
+  <span class="header-title">メール検索</span>
+</div>
+
+<!-- ===== Search UI ===== -->
+<div class="main">
+  <div class="row">
+    <select id="account">
+      <option value="all">全アカウント</option>
+      <option value="gmail">Gmail</option>
+      <option value="agnos">Agnos</option>
+    </select>
+    <input type="text" id="keyword" placeholder="件名キーワードを入力..." autofocus />
+    <button onclick="search()">検索</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn-gmail" onclick="openGmail()">📧 Gmailで検索</button>
+    <button class="btn-gmail" onclick="openOutlook()">📨 Outlookで検索</button>
+  </div>
+  <div id="status"></div>
+  <div id="results"></div>
+</div>
+
+<script>
+// ===== Loading animation =====
+(function(){
+  var glows = ['lgA','lgg','lgn','lgo','lgs'].map(function(id){return document.getElementById(id);});
+  var letters = ['llA','llg','lln','llo','lls'].map(function(id){return document.getElementById(id);});
+  var ring = document.getElementById('loadRing');
+  var circ = 653.5;
+
+  function anim(g,l,from,to,dur){
+    return new Promise(function(resolve){
+      var start=null;
+      function step(ts){
+        if(!start)start=ts;
+        var p=Math.min((ts-start)/dur,1);
+        var e=p<0.5?2*p*p:-1+(4-2*p)*p;
+        var v=from+(to-from)*e;
+        g.setAttribute('opacity',v);
+        l.setAttribute('opacity',v);
+        if(p<1)requestAnimationFrame(step);else resolve();
+      }
+      requestAnimationFrame(step);
+    });
+  }
+  function animRing(from,to,dur){
+    return new Promise(function(resolve){
+      var start=null;
+      function step(ts){
+        if(!start)start=ts;
+        var p=Math.min((ts-start)/dur,1);
+        var e=p<0.5?2*p*p:-1+(4-2*p)*p;
+        ring.style.strokeDashoffset=circ*(1-(from+(to-from)*e));
+        if(p<1)requestAnimationFrame(step);else resolve();
+      }
+      requestAnimationFrame(step);
+    });
+  }
+  function delay(ms){return new Promise(function(r){setTimeout(r,ms);});}
+
+  async function run(){
+    animRing(0,1,5000);
+    for(var i=0;i<5;i++){
+      anim(glows[i],letters[i],0,1,1200);
+      await delay(400);
+    }
+    await delay(2500);
+    var overlay=document.getElementById('loading-overlay');
+    overlay.classList.add('hide');
+    setTimeout(function(){overlay.remove();},1000);
+  }
+  run();
+})();
+
+// ===== Search Loading =====
+var searchLoadingActive = false;
+function showSearchLoading(show){
+  var el = document.getElementById('search-loading');
+  if(show){
+    el.style.display='flex';
+    searchLoadingActive=true;
+    runSearchAnim();
+  } else {
+    searchLoadingActive=false;
+    el.style.display='none';
+  }
+}
+function runSearchAnim(){
+  var sGlows=['sgA','sgg','sgn','sgo','sgs'].map(function(id){return document.getElementById(id);});
+  var sLetters=['slA','slg','sln','slo','sls'].map(function(id){return document.getElementById(id);});
+  var sRing=document.getElementById('searchRing');
+  var circ=653.5;
+  function sAnim(g,l,from,to,dur){
+    return new Promise(function(resolve){
+      var start=null;
+      function step(ts){
+        if(!start)start=ts;
+        var p=Math.min((ts-start)/dur,1);
+        var e=p<0.5?2*p*p:-1+(4-2*p)*p;
+        var v=from+(to-from)*e;
+        g.setAttribute('opacity',v);
+        l.setAttribute('opacity',v);
+        if(p<1)requestAnimationFrame(step);else resolve();
+      }
+      requestAnimationFrame(step);
+    });
+  }
+  function sRingAnim(from,to,dur){
+    return new Promise(function(resolve){
+      var start=null;
+      function step(ts){
+        if(!start)start=ts;
+        var p=Math.min((ts-start)/dur,1);
+        var e=p<0.5?2*p*p:-1+(4-2*p)*p;
+        sRing.style.strokeDashoffset=circ*(1-(from+(to-from)*e));
+        if(p<1)requestAnimationFrame(step);else resolve();
+      }
+      requestAnimationFrame(step);
+    });
+  }
+  function sDelay(ms){return new Promise(function(r){setTimeout(r,ms);});}
+  async function loop(){
+    if(!searchLoadingActive) return;
+    sRing.style.strokeDashoffset=circ;
+    sRingAnim(0,1,5000);
+    for(var i=0;i<5;i++){
+      sAnim(sGlows[i],sLetters[i],0,1,1200);
+      await sDelay(400);
+    }
+    await sDelay(2000);
+    for(var i=0;i<5;i++){
+      sAnim(sGlows[i],sLetters[i],1,0,800);
+      await sDelay(200);
+    }
+    await sDelay(500);
+    loop();
+  }
+  loop();
+}
+
+// ===== Search =====
+document.getElementById('keyword').addEventListener('keydown', function(e){
+  if(e.key==='Enter') search();
+});
+
+function search(){
+  var keyword=document.getElementById('keyword').value.trim();
+  var account=document.getElementById('account').value;
+  if(!keyword) return;
+  document.getElementById('status').textContent='検索中...';
+  document.getElementById('results').innerHTML='';
+  showSearchLoading(true);
+  fetch('/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keyword:keyword,account:account})})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      showSearchLoading(false);
+      var results=data.results||[];
+      document.getElementById('status').textContent=results.length+'件見つかりました';
+      if(results.length===0){
+        document.getElementById('results').innerHTML='<div class="no-result">見つかりませんでした<br><span style="font-size:0.8rem;color:#555;">Gmail/Outlookボタンでウェブ検索も試してください</span></div>';
+        return;
+      }
+      results.forEach(function(r){
+        var div=document.createElement('div');
+        div.className='result';
+        div.innerHTML='<div class="result-subject">'+(r.subject||'件名なし')+'</div>'
+          +'<div class="result-from">'+(r.from||'')+(r.date?' ・ '+r.date:'')+'</div>'
+          +'<div class="result-body">'+(r.body||'')+'</div>';
+        document.getElementById('results').appendChild(div);
+      });
+    })
+    .catch(function(err){showSearchLoading(false);document.getElementById('status').textContent='エラー: '+err.message;});
+}
+
+function openGmail(){
+  var kw=document.getElementById('keyword').value.trim();
+  window.open('https://mail.google.com/mail/u/0/#search/'+encodeURIComponent(kw||''),'_blank');
+}
+function openOutlook(){
+  var kw=document.getElementById('keyword').value.trim();
+  window.open('https://outlook.live.com/mail/0/search?q='+encodeURIComponent(kw||''),'_blank');
+}
+</script>
+</body>
+</html>
